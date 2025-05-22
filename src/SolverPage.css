@@ -1,17 +1,35 @@
 .sudoku-grid {
-  margin: auto;
+  display: inline-block;
+  border: 3px solid black; /* thick outer border */
+  background-color: #f8f8f8;
 }
 
-.row {
+.sudoku-row {
   display: flex;
 }
 
 .cell {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   text-align: center;
-  margin: 2px;
-  font-size: 20px;
-  border: 1px solid #aaa;
-  border-radius: 4px;
+  font-size: 22px;
+  border: 1px solid #bbb;
+  outline: none;
+  margin: 0; /* reset default margin */
+  padding: 0;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+/* Darker right border after every 3rd cell */
+.cell:nth-child(3),
+.cell:nth-child(6) {
+  border-right: 3px solid black;
+}
+
+/* Darker bottom border after every 3rd row */
+/* We target rows using nth-child and then all cells inside */
+.sudoku-row:nth-child(3) .cell,
+.sudoku-row:nth-child(6) .cell {
+  border-bottom: 3px solid black;
 }
