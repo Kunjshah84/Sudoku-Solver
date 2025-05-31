@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import '../SolverPage.css';
 
 export default function SolverPage() {
@@ -7,8 +7,8 @@ export default function SolverPage() {
   const [isValid, setIsValid] = useState(false);
   const [isSolved, setIsSolved] = useState(false);
   const [isSolving, setIsSolving] = useState(false);
-  const [cancelSolve, setCancelSolve] = useState(false);
-
+  const [originalBoard, setOriginalBoard] = useState([]);
+  const cancelSolve = useRef(false);
 
 
   const handleInputChange = (e, rowIndex, colIndex) => {
@@ -63,48 +63,47 @@ export default function SolverPage() {
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // This is the logic for the cancle button
   const handleReset = () => {
-    setCancelSolve(true); // Stop solving
-    setIsSolving(false);  // Reset solving flag
-    setError('');         // Clear any error
-    setIsSolved(false);
-    setIsValid(false);
-    setBoard(Array(9).fill().map(() => Array(9).fill(""))); // Clear board
-  };
+  cancelSolve.current = true; // Stop solving
+  setIsSolving(false);  // Reset solving flag
+  setError('');
+  setIsSolved(false);
+  setIsValid(false);
 
-
-const solve = async (grid) => {
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      if (cancelSolve) return false;
-      if (grid[row][col] === '') {
-        for (let num = 1; num <= 9; num++) {
-          const strNum = num.toString();
-          if (isValidPlacement(grid, row, col, strNum)) {
-            grid[row][col] = strNum;
-
-            // Update board state to visualize
-            setBoard(grid.map(r => [...r]));
-            await sleep(1000); // 100 ms delay for visualization
-
-            if (await solve(grid)) return true;
-
-            grid[row][col] = '';
-
-            // Update board state for backtracking visualization
-            setBoard(grid.map(r => [...r]));
-            await sleep(100);
-          }
-        }
-        return false;
-      }
-    }
+  if (originalBoard.length === 9) {
+    setBoard(originalBoard.map(row => [...row])); // Restore original input
+  } else {
+    setBoard(Array(9).fill().map(() => Array(9).fill(""))); // Fallback: empty grid
   }
-  return true;
 };
 
 
+  const solve = async (grid) => {
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        if (cancelSolve.current) return false;
+        if (grid[row][col] === '') {
+          for (let num = 1; num <= 9; num++) {
+            const strNum = num.toString();
+            if (isValidPlacement(grid, row, col, strNum)) {
+              grid[row][col] = strNum;
+
+              setBoard(grid.map(r => [...r]));
+              await sleep(100);
+
+              if (await solve(grid)) return true;
+
+              grid[row][col] = '';
+              setBoard(grid.map(r => [...r]));
+              await sleep(100);
+            }
+          }
+          return false;
+        }
+      }
+    }
+    return true;
+  };
 
   const handleCheck = () => {
     const valid = checkValidSudoku(board);
@@ -113,7 +112,7 @@ const solve = async (grid) => {
   };
 
   const handleSolve = async () => {
-    setCancelSolve(false); // Clear any previous cancellation
+    cancelSolve.current = false;  // clear previous cancel
     const valid = checkValidSudoku(board);
     setIsValid(valid);
     if (!valid) {
@@ -121,14 +120,16 @@ const solve = async (grid) => {
       return;
     }
 
+    setOriginalBoard(board.map(row => [...row]));
+
     const newBoard = board.map(row => [...row]);
     setError('');
     setIsSolved(false);
-    setIsSolving(true); // <-- start solving
+    setIsSolving(true);
 
     const solved = await solve(newBoard);
 
-    setIsSolving(false); // <-- done solving
+    setIsSolving(false);
 
     if (solved) {
       setBoard(newBoard);
@@ -137,17 +138,13 @@ const solve = async (grid) => {
     } else {
       setError("❌ This Sudoku can't be solved.");
     }
-};
-
-
-
+  };
 
   return (
     <div className="container mt-5 text-center">
       <h2 className="mb-4">🧩 Sudoku Solver</h2>
       {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      
-      {/* Centering container */}
+
       <div className="sudoku-box">
         <div className="sudoku-grid">
           {board.map((row, rowIndex) =>
@@ -159,7 +156,7 @@ const solve = async (grid) => {
                 className="cell"
                 value={cell}
                 onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
-                disabled={isSolving} 
+                disabled={isSolving}
               />
             ))
           )}
@@ -168,9 +165,9 @@ const solve = async (grid) => {
 
       <div className="mt-4">
         <button className="btn btn-warning me-2" onClick={handleCheck} disabled={isSolving}>Check</button>
-          {isValid && !isSolved && (
-            <button className="btn btn-success" onClick={handleSolve} disabled={isSolving}>Solve Sudoku</button>
-          )}
+        {isValid && !isSolved && (
+          <button className="btn btn-success" onClick={handleSolve} disabled={isSolving}>Solve Sudoku</button>
+        )}
         <button className="btn btn-danger ms-2" onClick={handleReset}>Reset</button>
       </div>
     </div>
