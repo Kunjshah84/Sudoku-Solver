@@ -10,7 +10,6 @@ export default function SolverPage() {
   const [originalBoard, setOriginalBoard] = useState([]);
   const cancelSolve = useRef(false);
 
-
   const handleInputChange = (e, rowIndex, colIndex) => {
     const value = e.target.value;
     if (value === '' || (/^[1-9]$/.test(value))) {
@@ -63,22 +62,24 @@ export default function SolverPage() {
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const handleReset = () => {
-  cancelSolve.current = true; // Stop solving
-  setIsSolving(false);  // Reset solving flag
-  setError('');
-  setIsSolved(false);
-  setIsValid(false);
+  const handleReset = async () => {
+    cancelSolve.current = true;
+    await new Promise(resolve => setTimeout(resolve, 150)); // Ensure recursive calls finish
 
-  if (originalBoard.length === 9) {
-    setBoard(originalBoard.map(row => [...row])); // Restore original input
-  } else {
-    setBoard(Array(9).fill().map(() => Array(9).fill(""))); // Fallback: empty grid
-  }
-};
+    setIsSolving(false);
+    setError('');
+    setIsSolved(false);
+    setIsValid(false);
 
+    if (originalBoard.length === 9) {
+      setBoard(originalBoard.map(row => [...row]));
+    } else {
+      setBoard(Array(9).fill().map(() => Array(9).fill("")));
+    }
+  };
 
   const solve = async (grid) => {
+    if (cancelSolve.current) return false;
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
         if (cancelSolve.current) return false;
@@ -88,14 +89,18 @@ export default function SolverPage() {
             if (isValidPlacement(grid, row, col, strNum)) {
               grid[row][col] = strNum;
 
-              setBoard(grid.map(r => [...r]));
-              await sleep(100);
+              if (!cancelSolve.current) {
+                setBoard(grid.map(r => [...r]));
+                await sleep(100);
+              }
 
               if (await solve(grid)) return true;
 
               grid[row][col] = '';
-              setBoard(grid.map(r => [...r]));
-              await sleep(100);
+              if (!cancelSolve.current) {
+                setBoard(grid.map(r => [...r]));
+                await sleep(100);
+              }
             }
           }
           return false;
@@ -112,7 +117,7 @@ export default function SolverPage() {
   };
 
   const handleSolve = async () => {
-    cancelSolve.current = false;  // clear previous cancel
+    cancelSolve.current = false;
     const valid = checkValidSudoku(board);
     setIsValid(valid);
     if (!valid) {
@@ -121,7 +126,6 @@ export default function SolverPage() {
     }
 
     setOriginalBoard(board.map(row => [...row]));
-
     const newBoard = board.map(row => [...row]);
     setError('');
     setIsSolved(false);
